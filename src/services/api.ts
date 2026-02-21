@@ -183,6 +183,10 @@ export type ApplicationRecord = {
   mcq_pass_threshold: number;
   mcq_status: "not_required" | "pending" | "passed" | "failed";
   practical_round_status: "not_eligible" | "eligible" | "completed";
+  practical_status?: "not_started" | "in_progress" | "passed" | "failed" | "timeout" | null;
+  practical_score_percentage?: number;
+  practical_pass_threshold?: number;
+  practical_report_notes?: string | null;
   status: "under_review" | "shortlisted" | "rejected" | "hired";
   applied_at: string;
   job_title: string;

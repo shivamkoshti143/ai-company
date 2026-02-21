@@ -77,8 +77,12 @@ export default function CompanyApplicationsPage() {
                       <td className="px-5 py-4"><a className="text-brand-500" href={`http://localhost:5000${r.resume_path}`} target="_blank" rel="noreferrer">View Resume</a></td>
                       <td className="px-5 py-4">{Number(r.match_percentage).toFixed(2)}% / {Number(r.match_threshold).toFixed(0)}%</td>
                       <td className="px-5 py-4">{r.screening_result}{r.screening_notes ? <div className="text-xs text-gray-500">{r.screening_notes}</div> : null}</td>
-                      <td className="px-5 py-4">{r.mcq_required ? `${r.mcq_status} (${Number(r.mcq_score_percentage).toFixed(2)}% / ${Number(r.mcq_pass_threshold).toFixed(0)}%)` : "Not required"}</td>
-                      <td className="px-5 py-4">{r.practical_round_status}</td>
+                      <td className="px-5 py-4">{r.mcq_required ? `${r.mcq_status} (${Number(r.mcq_correct_answers).toFixed(0)}/${Number(r.mcq_total_questions).toFixed(0)}, ${Number(r.mcq_score_percentage).toFixed(2)}% / ${Number(r.mcq_pass_threshold).toFixed(0)}%)` : "Not required"}</td>
+                      <td className="px-5 py-4">
+                        {r.practical_status
+                          ? `${r.practical_status} (${Number(r.practical_score_percentage || 0).toFixed(2)}% / ${Number(r.practical_pass_threshold || 70).toFixed(0)}%)`
+                          : r.practical_round_status}
+                      </td>
                       <td className="px-5 py-4">{r.status}</td>
                     </tr>
                   ))
