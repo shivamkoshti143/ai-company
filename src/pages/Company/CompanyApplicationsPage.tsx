@@ -1,12 +1,32 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PageMeta from "../../components/common/PageMeta";
-import { ApplicationRecord, getCompanyApplications } from "../../services/api";
+import {
+  API_ORIGIN,
+  ApplicationRecord,
+  getCompanyApplicationReport,
+  getCompanyApplicationReportPdfUrl,
+  getCompanyApplications,
+} from "../../services/api";
+
+type OverrideHistoryItem = {
+  id: number;
+  previous_status: string | null;
+  new_status: string;
+  override_category?: string;
+  override_note: string;
+  created_at: string;
+  admin_name: string;
+  admin_email: string;
+};
 
 export default function CompanyApplicationsPage() {
   const [rows, setRows] = useState<ApplicationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [reportAppId, setReportAppId] = useState<number | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [overrideHistory, setOverrideHistory] = useState<OverrideHistoryItem[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -63,18 +83,19 @@ export default function CompanyApplicationsPage() {
                   <th className="px-5 py-3 text-left">MCQ</th>
                   <th className="px-5 py-3 text-left">Practical</th>
                   <th className="px-5 py-3 text-left">Status</th>
+                  <th className="px-5 py-3 text-left">Report</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={9} className="px-5 py-4">Loading applications...</td></tr>
+                  <tr><td colSpan={10} className="px-5 py-4">Loading applications...</td></tr>
                 ) : filtered.length ? (
                   filtered.map((r) => (
                     <tr key={r.id} className="border-b border-gray-200 dark:border-gray-800">
                       <td className="px-5 py-4">{r.job_title}</td>
                       <td className="px-5 py-4">{r.candidate_name}<div className="text-xs text-gray-500">{r.candidate_email}</div></td>
                       <td className="px-5 py-4">{new Date(r.applied_at).toLocaleString()}</td>
-                      <td className="px-5 py-4"><a className="text-brand-500" href={`http://localhost:5000${r.resume_path}`} target="_blank" rel="noreferrer">View Resume</a></td>
+                      <td className="px-5 py-4"><a className="text-brand-500" href={`${API_ORIGIN}${r.resume_path}`} target="_blank" rel="noreferrer">View Resume</a></td>
                       <td className="px-5 py-4">{Number(r.match_percentage).toFixed(2)}% / {Number(r.match_threshold).toFixed(0)}%</td>
                       <td className="px-5 py-4">{r.screening_result}{r.screening_notes ? <div className="text-xs text-gray-500">{r.screening_notes}</div> : null}</td>
                       <td className="px-5 py-4">{r.mcq_required ? `${r.mcq_status} (${Number(r.mcq_correct_answers).toFixed(0)}/${Number(r.mcq_total_questions).toFixed(0)}, ${Number(r.mcq_score_percentage).toFixed(2)}% / ${Number(r.mcq_pass_threshold).toFixed(0)}%)` : "Not required"}</td>
@@ -84,15 +105,78 @@ export default function CompanyApplicationsPage() {
                           : r.practical_round_status}
                       </td>
                       <td className="px-5 py-4">{r.status}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
+                          <a className="text-brand-500" href={getCompanyApplicationReportPdfUrl(r.id)} target="_blank" rel="noreferrer">PDF</a>
+                          <button
+                            type="button"
+                            className="text-brand-500"
+                            onClick={async () => {
+                              setReportAppId(r.id);
+                              setReportLoading(true);
+                              setOverrideHistory([]);
+                              try {
+                                const report = await getCompanyApplicationReport(r.id);
+                                setOverrideHistory(report.override_history || []);
+                              } catch (err) {
+                                setError(err instanceof Error ? err.message : "Unable to load report details");
+                              } finally {
+                                setReportLoading(false);
+                              }
+                            }}
+                          >
+                            History
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan={9} className="px-5 py-4">No applications found.</td></tr>
+                  <tr><td colSpan={10} className="px-5 py-4">No applications found.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
+
+        {reportAppId ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+            <div className="w-full max-w-3xl p-5 bg-white border rounded-2xl dark:bg-gray-900">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Override History</h3>
+                <button type="button" className="px-3 py-1 border rounded" onClick={() => setReportAppId(null)}>Close</button>
+              </div>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Application ID: {reportAppId}</p>
+              <div className="mt-4 max-h-[60vh] overflow-auto">
+                {reportLoading ? <p className="text-sm text-gray-500">Loading...</p> : null}
+                {!reportLoading && overrideHistory.length ? (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="py-2 text-left">When</th>
+                        <th className="py-2 text-left">Admin</th>
+                        <th className="py-2 text-left">Change</th>
+                        <th className="py-2 text-left">Category</th>
+                        <th className="py-2 text-left">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overrideHistory.map((item) => (
+                        <tr key={item.id} className="border-b">
+                          <td className="py-2">{new Date(item.created_at).toLocaleString()}</td>
+                          <td className="py-2">{item.admin_name}<div className="text-xs text-gray-500">{item.admin_email}</div></td>
+                          <td className="py-2">{item.previous_status || "-"} to {item.new_status}</td>
+                          <td className="py-2">{item.override_category || "other"}</td>
+                          <td className="py-2">{item.override_note}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : !reportLoading ? <p className="text-sm text-gray-500">No override history.</p> : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </>
   );

@@ -1,6 +1,7 @@
 import { getAuthSession } from "../utils/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+export const API_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT";
@@ -261,6 +262,28 @@ export const getCompanyVacancies = () =>
 
 export const getCompanyApplications = () =>
   apiRequest<ApplicationRecord[]>("/company/applications", { requiresAuth: true });
+
+export const getCompanyApplicationReport = (applicationId: number) =>
+  apiRequest<{
+    application: ApplicationRecord;
+    mcq_questions: Array<Record<string, unknown>>;
+    override_history: Array<{
+      id: number;
+      previous_status: string | null;
+      new_status: string;
+      override_category?: string;
+      override_note: string;
+      created_at: string;
+      admin_name: string;
+      admin_email: string;
+    }>;
+  }>(
+    `/company/applications/${applicationId}/report`,
+    { requiresAuth: true },
+  );
+
+export const getCompanyApplicationReportPdfUrl = (applicationId: number) =>
+  `${API_BASE}/company/applications/${applicationId}/report.pdf?token=${encodeURIComponent(getAuthSession()?.token || "")}`;
 
 // Backward-compatible exports retained from cloned project templates.
 export const loginAdmin = loginCompany;
